@@ -33,3 +33,15 @@ const membytes_write = fn (buf: membytes, offset: u256, value: $T) bool {
     unsafe_mem_write(buf.ptr +% offset, value);
     true
 };
+
+// Raw append of two memory byte buffers (Solidity `abi.encodePacked(a, b)`).
+const membytes_concat = fn (a: membytes, b: membytes) membytes {
+    let out = membytes_new(a.length + b.length);
+    if a.length > 0 {
+        @mcopy(out.ptr, a.ptr, a.length);
+    }
+    if b.length > 0 {
+        @mcopy(out.ptr + a.length, b.ptr, b.length);
+    }
+    out
+};

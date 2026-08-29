@@ -1,5 +1,6 @@
 import std::fixedbytes::bytes32;
-import std::regions::{bytes, memory};
+import std::regions::{bytes, memory, keccak256};
+import std::membytes::{membytes, membytes_new, membytes_from_ptr};
 import std::option::{Option, Some, None, unwrap as option_unwrap};
 import std::core::uint::{u160, is_uint, try_cast_uint, cast_uint, unsafe_from_u256 as unsafe_uint_from_u256};
 
@@ -58,4 +59,17 @@ const raw_create2 = fn (value: u256, code: bytes(memory), salt: bytes32) Option(
         return None(addr);
     }
     Some(addr { as_uint: unsafe_uint_from_u256(u160, account) })
+};
+
+// CREATE2 address pre-image: keccak256(0xff ++ deployer(20) ++ salt(32) ++ initCodeHash(32))[12:32]
+const compute_create2_address = fn (deployer: addr, salt: bytes32, init_code_hash: bytes32) addr {
+    let buf = membytes_new(85);
+    @mstore8(buf.ptr, 0xff);
+    let deployer_word = membytes_new(32);
+    @mstore32(deployer_word.ptr, cast_addr(deployer, u256));
+    @mcopy(buf.ptr + 1, deployer_word.ptr + 12, 20);
+    @mstore32(buf.ptr + 21, salt.raw);
+    @mstore32(buf.ptr + 53, init_code_hash.raw);
+    let digest = keccak256(membytes_from_ptr(buf.ptr, 85));
+    addr_from_u256(digest.raw & 0xffffffffffffffffffffffffffffffffffffffff)
 };
