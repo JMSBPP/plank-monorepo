@@ -13,3 +13,6 @@
 [submodule "plankc/sir/sir-solidity-diff-tests/lib/solady"]
 	path = plankc/sir/sir-solidity-diff-tests/lib/solady
 	url = https://github.com/vectorized/solady
+[submodule ".cursor/skills/plank-tdd"]
+	path = .cursor/skills/plank-tdd
+	url = https://github.com/JMSBPP/plank-tdd.git
