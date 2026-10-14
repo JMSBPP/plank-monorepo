@@ -21,12 +21,13 @@
 ## static [\[1\]](@.ref/src/EVM/Abi.hs::176) :: \(T_{s}\)
 \[
 	\begin{aligned}
-	T_{s} = \mathrm{b}_M \, \cup \,  F_a \, \cup \, U_{M_8} \, \cup \, \mathbb{B}\, \cup \, T_{s}^{[\cdot]} \, (M) \, \cup \, T_{s}^{(\cdot)} \, (M); \,\quad \,  M \in \text{comptime}\\ 
+	T_{s} = \mathrm{b}_M \, \cup \,  F_a \, \cup \, U_{M_8}\,  \cup \, \mathbb{B}\, \cup \, T_{s}^{[\cdot]} \, (M) \, \cup \, T_{s}^{(\cdot)} \, (M); \,\quad \,  M \in \text{comptime}\\ 
 	\\
 		\mathrm{b}_M \\
 		F_a: \mathrm{b}_{20} \mid \mathrm{b}_{4} \\
 		U_{M_8}: \mathrm{b}_{M_8} \\
-		\mathbb{B} \, \subset \mathrm{b}_{8}
+		\mathbb{B} \, \subset \mathrm{b}_{8} \\
+		U_{M_8} = sU_{M_8} \, \cup \, usU_{M_8}
 	\end{aligned}
 \]
 
@@ -39,7 +40,9 @@
 
 \[
 	\begin{aligned}
-		T_d \, = b\, (x) \, \cup \, T^{[\,\cdot \, ]}\, (x) \, \cup \, T^{(\,\cdot \, )};\, (x) \, \quad x \, \in \, \text{runtime}
+		T_d \, &= b\, (x) \, \cup \, T^{[\,\cdot \, ]}\, (x) \, \cup \, T^{(\,\cdot \, )}\, (x) \, \cup T_{d}^{[\cdot]} \, (M) \, \cup \, T_{d}^{(\cdot)} \, (M)\quad x \, \in \, \text{runtime}, \, \quad \, M \, \in \, \text{comptime} \\
+		\\
+		T^{[\,\cdot \, ]}\, (x) \, &= \, T_s^{[\cdot]} \, (x) \, \cup \, T_d^{[\cdot]} \, (x); \quad x \, \in \, \text{runtime},
 	\end{aligned}
 \]
 
@@ -81,11 +84,11 @@ Consider the *abi-type value* \(v \in V_{\mathrm{ABI}}\) is of ABI type \(T_{\ma
 		\\
 		\mu_{\text{hd}} (v) &= \begin{cases}
 			32 & \, \mathcal{T} \, (v) \, \in T_d \\
-			32 & \,  \mathcal{T} \, (v) \, \in \Big ( T_s \, - \, T_{s}^{[\cdot]} \, (M)\, \Big ) \\
+			32 & \,  \mathcal{T} \, (v) \, \in \Big ( T_s \, \setminus \, \big ( T_{s}^{[\cdot]} (M) \, \cup \, T_{s}^{(\cdot)} (M) \big ) \, \Big ) \\
 		\sum_{i=1}^{M} \, \mu_{\text{hd}} \, (v_i ) & \, \mathcal{T} \, (v) \in \Big (\, T_{s}^{[\cdot]} (M) \cup  T_{s}^{(\cdot)} (M) \, \Big)
 		\end{cases}
 	\end{aligned}
-\]
+\] ; plank/std/abi_helpers.plk:abi_head_size
 
 
 ## [Tail]()
@@ -96,18 +99,146 @@ Consider the *abi-type value* \(v \in V_{\mathrm{ABI}}\) is of ABI type \(T_{\ma
 		\mu_{\text{tl}} \, (v) \, &:: \, V_{\text{ABI}} \, \mapsto \, \mathbb{N} \\
 		\\
 		\mu_{\text{tl}} \, (v) \, &= \, \begin{cases}
-			0 \, & \, \mathcal{T} \, (v) \, \in \,  T_s  \\
-			\mu_{\text{hd}} (v) \, + \, \min \, (x, 32) \, & \, \mathcal{T} \, (v) \, \in \, \Big (T_d \cap b(x) \, \Big)
-			
+			0 & \, \mathcal{T} \, (v) \, \in \, T_s \\
+			32 + 32 \left\lceil \dfrac{x}{32} \right\rceil & \, \mathcal{T} \, (v) \, \in \, b(x) \\
+			32 + \displaystyle\sum_{i=1}^{x} \mu_{\text{hd}} (v_i) + \displaystyle\sum_{i=1}^{x} \mu_{\text{tl}} (v_i) & \, \mathcal{T} \, (v) \, \in \, T^{[\,\cdot \, ]} (x) \\
+			\displaystyle\sum_{i=1}^{M} \mu_{\text{hd}} (v_i) + \displaystyle\sum_{i=1}^{M} \mu_{\text{tl}} (v_i) & \, \mathcal{T} \, (v) \, \in \, T_{d}^{[\cdot]} (M) \, \cup \, T_{d}^{(\cdot)} (M) \, \cup \, T^{(\,\cdot \, )} (x)
 		\end{cases}
 	\end{aligned}
 \]
  
+### [EncodedSize]()
+\[
+	\begin{aligned}
+		n &:: V_{\text{ABI}} \, \mapsto \mathbb{N} \\
+		\\
+		n \, (v) \, &= \, \begin{cases}
+			\mu_{\text{hd}} \, (v) & \, \mathcal{T} \, (v) \, \in \, T_s \\
+			\mu_{\text{tl}} \, (v) & \, \mathcal{T} \, (v) \, \in \, T_d
+		\end{cases}
+	\end{aligned}
+\]  ; plank/std/abi.plk:abi_encoded_size
+
+
+# ENCODING [\[1\]](EVM/ABI.hs)[\[2\]](std/abi_helpers.plk) :: \(\rho\)
+
+
+\[
+	\begin{aligned}
+		\rho &:: V_{\mathrm{ABI}} \to \mathrm{B} \, ( n (v)) \\
+	\end{aligned}
+\]
+
+Since we care about plank:
+
+\[
+	\begin{aligned}
+		\rho \leftarrow \rho_{\mathrm{plank}} (\mathcal{b}, \mathcal{o}, v) \\
+		\\
+	    \rho_{\mathrm{plank}} (\mathcal{b}, \mathcal{o}, v) :: \text{BufferRegion} \times \text{Offset}\times V_{\text{ABI}} \, \to\,  \mathrm{B} \, (n (v))
+	\end{aligned}
+\]
+
+Define:
+
+\[
+	\begin{aligned}
+        \text{region}: = \text{memory} \, \cup \,\ \text{calldata} \, \cup \, \text{code} \, \cup \, \text{ctime} \\
+		\\
+		\text{regionPtr}:: \text{region} \mapsto \text{Pointer};
+	\end{aligned}
+\]
+And:
+
+\[
+	\begin{aligned}
+		\text{Pointer} \, \subseteq \, T_{\text{ABI}} \\
+	    \text{Pointer} \, = U_{256} \cup \cdots \text{TBD}
+	\end{aligned}
+\]
+
+
+In particular, we have the constructor:
+
+\[
+	\begin{aligned}
+		\text{regionPtr}(\text{memory} \, \cup \,\ \text{calldata} \, \cup \, \text{code}) = U_{256}
+	\end{aligned}
+\] ; plank/std/regions.plk::region_ptr_type
+
+Define:
+
+\[
+	\begin{aligned}
+	    \text{BufferRegion}: \text{region} \, \mapsto \, (\text{Pointer}  \times \mathbb{N})
+	\end{aligned}
+\]  ; plank/std/regions.plk::bytes;
+
+Define:
+\[
+	\begin{aligned}
+		l: V_{\text{ABI}} \, \mapsto \, \mathbb{N} \\
+		\Big (\forall_{v} \mid v \, \in V_{\text{ABI}} : \, l (v) = n(v) \Big )
+		\end{aligned}
+\]  ; TBD
+
+Define:
+
+\[
+	\begin{aligned}
+		s: T_{\text{ABI}} \, \mapsto \, \mathbb{N}
+	\end{aligned}
+\]  ; plank/std/type.plk::sizeof
+
+We can establish, or at least hypothesize some properties hold:
+
+\[
+	\begin{aligned}
+		\Big (\forall_{v} \mid v \, \in V_{\text{ABI}} : l (v)\leq s (\mathcal{T} \, (v)) \Big )
+	\end{aligned}	
+\]
+
+
+Define the *abi-values region admissibe pointers* set as:
+
+\[
+	\begin{aligned}
+		\mathcal{O} \, (\mathrm{r}\, \in \textrm{region}, v \in V_{\text{ABI}} ) = \{ m  \, \in \text{regionPtr} \, (r) : m \leq s (\mathcal{T} \, (v) )\}
+	\end{aligned}
+\]
+
+Then we have:
+
+\[
+	\begin{aligned}
+		\rho_{\mathrm{plank}} (\mathcal{b}, \mathcal{o}, v) :: \text{BufferRegion} \times \text{Offset}\times V_{\text{ABI}} \, \to\,  \mathrm{B} \, (n (v)) \\
+		\iff \\
+		\rho_{\mathrm{plank}} ( \mathrm{r} , v ) : \mathcal{O} \, (\mathrm{r}\, \in \textrm{region}, v \in V_{\text{ABI}} ) \, \mapsto \,  \mathrm{B} \, (n (v))
+	\end{aligned}
+\]
+
+Now our task is to define \(\mathrm{B} \, (n (v))\) to make the API clearer
+
+\(\mathrm{B} \, (n \, (v) )\); plank/std/membytes.plk:: membytes_new
+
+Now the encoding formalization comes with the following things to do
+
+- Define an order or a way to define paths over O, such that somehting can walk it ?
+
+Note that en encoding map implies that when a pointer is *succesfully written* one can not re-write it. This is it becomes read only, 
+
+Note that defining movement on O implies figring out how pointers move
+- Understand the original plank/std/::unsafe_abi_encode_to and formalize it mathematically. This we need to find the first constructor of the type to start implementation
+
+> checkpoint
 
 
 
 
-> checkpoint abiHeadSize :: AbiValue -> Int
+
+> checkpoint
+
+
 
 # REQUIREMENTS
 
@@ -144,6 +275,3 @@ As an example with 3-nested array, we define the 'depth' of a type as a function
 
 > question: Explain "Accumulator for computing ABI encoded size of a struct via fold  Runtime value (encoded_value) cannot be captured in closures, so it must be threaded through fold. total_size changes each iteration."
 
-# INTERNAL_TODO
-
-Brainstorm change for notation for array types , both static and dynamic

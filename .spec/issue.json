@@ -1,0 +1,18 @@
+{
+    "body": "The standard library is a mess from when we still didn't have
+       `inline while`, `$T`, methods, etc. should be rewritten completely \n- [ ] ABI static/full size utils\n- [ ] ABI selector computation helpers\n- [ ] Reusable memory ABI encoder\n- [ ] ABI decoder that's generic over memory/calldata\n- [ ] ABI utils that reusable for/with event data encoding\n- [ ] update require / revert helpers to automatically accept structs as error types",
+    "now": [
+	"inline while",
+	"$T"
+	
+    ],
+    "requirements": [
+	"ABI static/full size utils",
+	"ABI selector computation helpers",
+	"Reusable memory ABI encoder",
+	"ABI decoder that's generic over memory/calldata",
+	
+    ]
+}
+
+
